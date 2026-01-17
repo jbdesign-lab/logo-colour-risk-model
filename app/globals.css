@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'GT America';
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8f9fa;
+  --foreground: #1a1a1a;
+  
+  /* Moody's Brand Colors */
+  --moodys-dark-blue: #0a1264;
+  --moodys-light-blue: #005eff;
+  --moodys-white: #ffffff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'GT America', helvetica, arial, sans-serif;
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  
+  /* Moody's colors as Tailwind variables */
+  --color-moodys-dark: var(--moodys-dark-blue);
+  --color-moodys-light: var(--moodys-light-blue);
+  --color-moodys-white: var(--moodys-white);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'GT America', helvetica, arial, sans-serif;
 }

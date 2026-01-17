@@ -7,39 +7,60 @@ A desktop-first web application prototype that helps underwriters and portfolio 
 This prototype allows users to:
 
 - **Explore Risk**: View ranked logo colours and their associated insurance risk levels
-- **Analyze Portfolio**: Filter companies by colour, view aggregate portfolio statistics, and risk distributions
+- **Analyse Portfolio**: Filter companies by colour, view aggregate portfolio statistics, and risk distributions
 - **Compare Companies**: Select multiple companies to compare their risk profiles side-by-side
 - **Simulate Scenarios**: Run "what-if" simulations to understand how changing a company's logo colour could impact its risk profile
+
+## Design Philosophy
+
+The UI follows a basic platform design with:
+- Clear hierarchy and generous spacing for readability
+- Elevated cards and light gray borders for visual structure
+- Text-first indicators for clarity and accessibility
+- Desktop-first layouts with responsive behavior where it adds value
+- Shadcn UI components for UI consistency
 
 ## Key Features
 
 ### 1. Colour Risk Explorer (/overview)
-- Ranked list of logo colours sorted by average risk score
-- Visual colour swatches with risk tier and confidence indicators
-- Interactive detail panel showing risk tier distribution
-- Bar chart displaying average risk scores and company counts by colour
+- Ranked list presented as clean, tappable rows with light dividers
+- Visual colour swatches with text labels and tier badges
+- Interactive detail panel showing risk tier distribution and confidence
+- Bar chart of average risk and company counts with legible ticks and labels
 
 ### 2. Portfolio Dashboard (/portfolio)
-- Multi-select colour filters for quick portfolio segmentation
-- Full-text search across company names
-- Aggregate portfolio KPIs: total companies, average risk, tier breakdown, total exposure
-- Risk tier distribution visualization
-- Sortable company table with industry and region information
+- Page hero section introducing the dashboard’s purpose
+- KPI cards for portfolio size, average risk, and total exposure
+- **Scenario Mode**: Simulate changing filtered companies to a different colour
+  - Select a colour to run a scenario on the current filtered set
+  - Side-by-side current vs. scenario KPI comparison
+  - Visual tier distribution comparison chart (Current vs. Scenario)
+  - Summary showing average risk change
+- One-click High/Severe risk focus card with active state
+- Collapsible Advanced Analytics with tier distribution and percentage breakdown
+- Filter sidebar with active filter badges; search and colour selectors
+- Sortable company table (desktop) and card list (mobile) with light gray borders
 
 ### 3. Compare Companies (/compare)
-- Interactive company selector with search functionality
-- Side-by-side comparison cards showing risk profiles
-- Comparison chart displaying risk scores across selected companies
-- Portfolio average indicator to contextualize individual company risk
-- Risk delta calculation showing deviation from portfolio average
+- Company selector with search
+- **What-If Colour Simulation**: Change logo colour per company to see predicted risk impact
+  - Select alternate colours via dropdown for each company
+  - Simulated risk badge showing proposed tier and score
+  - Change comparison (proposed vs. current risk) with colour-coded values
+  - Chart bars update to reflect simulations with tier-based colours and reduced opacity
+  - Tooltip indicates "Simulated" for modified entries
+  - Reset button to clear simulation per company
+- Side-by-side comparison cards with consistent, elevated styling
+- Comparison chart of risk scores with portfolio average reference
+- Numeric difference from portfolio average
 
 ### 4. Company Detail + What-If (/company/:id)
 - Detailed company profile with logo colour, risk tier, industry, and exposure
-- Interactive colour picker for what-if simulation
+- Interactive colour picker grouped by risk tier with "Current" label
 - Real-time impact analysis showing:
   - Current risk profile
   - Predicted risk if colour changes
-  - Risk delta with direction indicator
+  - Risk change with text-based direction (Increases/Decreases, to)
   - Confidence level in prediction
 - Clear disclaimer that results are analytical signals, not recommendations
 
@@ -87,10 +108,26 @@ Each colour has deterministic risk characteristics that vary by company (simulat
 
 - **Framework**: Next.js 16 with React 19 and TypeScript
 - **State Management**: Zustand for lightweight global state (company selection, filters)
-- **Charts**: Recharts for bar charts and data visualizations
+- **Charts**: Recharts for bar charts and data visualisations
 - **Styling**: Tailwind CSS 4 for responsive, desktop-first design
-- **UI Components**: Custom components built with Radix UI primitives
+- **UI Components**: shadcn/ui components built on Radix UI primitives + custom components
 - **Data**: Local JSON file structure (mockData.ts)
+
+## Design System
+
+- Brand variables and typography are defined in `app/globals.css` (e.g., `--moodys-dark-blue`, `--moodys-light-blue`) with a desktop-first background and type setup.
+- Shared UI primitives live in `components/ui/*` (Card, Badge, Table, Select, Pagination) and are styled with Tailwind on top of Radix.
+- Reusable app components in `components/shared.tsx`:
+  - `RiskBadge`: Text-only tier and score, stable visuals (no hover color changes)
+  - `ColorSwatch`: Visual colour chip with label
+  - `StatCard`: KPI card with clear label, value, optional subtext
+  - `ConfidenceIndicator`: Low/Medium/High with color-coded backgrounds
+- Interaction and visual conventions:
+  - Text-first indicators; avoid icon-only affordances
+  - Light gray borders and dividers for tables and lists for a professional feel
+  - Minimal hover styling on badges to keep information stable
+
+These conventions keep the UI cohesive, accessible, and easy to extend.
 
 ## Project Structure
 
@@ -176,7 +213,7 @@ npm start
 - ✅ **Desktop-first layout** (minimum 1280px)
 - ✅ **Clear hierarchy** with legible data density
 - ✅ **Loading & empty states** handled gracefully
-- ✅ **Accessibility**: Never rely on colour alone (all tiers use text labels)
+- ✅ **Accessibility**: Text labels for all tiers; no icon-only affordances
 - ✅ **Responsive design** works on tablets at reduced functionality
 - ✅ **Fast interactions** using local state and no external API calls
 
@@ -187,19 +224,9 @@ The prototype includes clear disclaimers in the What-If feature:
 
 This ensures users understand the tool is exploratory and does not constitute formal risk assessment or underwriting recommendations.
 
-## Future Enhancements (Out of Scope)
-
-- Export portfolio view to CSV
-- Save custom scenarios locally
-- Integration with Moody's production risk models
-- Real data connection replacing mock dataset
-- Advanced filtering by exposure-weighted metrics
-- Portfolio comparison across teams
-- Historical trend analysis
-
 ## Support & Feedback
 
-This is a prototype for evaluation and usability testing. Please provide feedback on:
+If this was a real prototype it would be used for evaluation and usability testing to get feedback on:
 - Clarity of risk signals
 - Usefulness of what-if scenarios
 - Colour picker and interactive elements

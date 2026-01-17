@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { mockCompanies, getColorRiskSummaries } from "@/data/mockData";
 import { useComparisonStore } from "@/store";
 import { PageHeader } from "@/components/navigation";
@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   BarChart,
   Bar,
@@ -19,13 +26,24 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { calculatePortfolioStats } from "@/lib/utils";
+import { calculatePortfolioStats, calculateWhatIfRisk, getRiskColor } from "@/lib/utils";
+import { RiskTier } from "@/lib/types";
 
 export default function ComparePage() {
   const { selectedCompanies, toggleCompany, clearSelected } = useComparisonStore();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [whatIfSelections, setWhatIfSelections] = useState<Record<string, string | null>>({});
 
   const summaries = getColorRiskSummaries();
+
+  // Responsive breakpoint detection for chart/ticks
+  useEffect(() => {
+    const onResize = () => setIsSmallScreen(window.innerWidth < 640); // Tailwind 'sm' breakpoint
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Get selected company objects
   const companiesForComparison = useMemo(() => {
@@ -44,12 +62,40 @@ export default function ComparePage() {
   // Calculate portfolio stats for comparison
   const portfolioAverage = calculatePortfolioStats(mockCompanies);
 
-  // Prepare chart data
-  const chartData = companiesForComparison.map((company) => ({
-    name: company.name.substring(0, 12),
-    risk: company.risk.score,
-    industry: company.industry,
-  }));
+  type ChartItem = {
+    name: string;
+    risk: number;
+    industry?: string;
+    simulated: boolean;
+    tier: RiskTier;
+  };
+
+  // Prepare chart data (reflect simulations if present)
+  const chartData: ChartItem[] = companiesForComparison.map((company) => {
+    const selectedColor = whatIfSelections[company.id];
+    if (selectedColor) {
+      const result = calculateWhatIfRisk(company, selectedColor);
+      const summary = summaries[selectedColor];
+      return {
+        name: company.name.substring(0, 12),
+        risk: result.proposedRisk,
+        industry: company.industry,
+        simulated: true,
+        tier: summary.tier,
+      };
+    }
+    return {
+      name: company.name.substring(0, 12),
+      risk: company.risk.score,
+      industry: company.industry,
+      simulated: false,
+      tier: company.risk.tier,
+    };
+  });
+
+  const xAxisAngle = isSmallScreen ? 0 : -45;
+  const xAxisHeight = isSmallScreen ? 30 : 80;
+  const xAxisAnchor = isSmallScreen ? "middle" : "end";
 
   return (
     <>
@@ -66,39 +112,53 @@ export default function ComparePage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <CardTitle className="text-lg sm:text-xl">Risk Score Comparison</CardTitle>
                 <div className="text-xs sm:text-sm text-gray-600">
-                  Comparing {companiesForComparison.length} compan
-                  {companiesForComparison.length !== 1 ? "ies" : "y"}
+                  {`Comparing ${companiesForComparison.length} ${
+                    companiesForComparison.length !== 1 ? "companies" : "company"
+                  }`}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis domain={[0, 100]} />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload[0]) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-white border border-gray-300 rounded shadow-lg p-2 text-xs">
-                            <p className="font-semibold">{data.name}</p>
-                            <p>Risk Score: {data.risk}</p>
-                            <p>Industry: {data.industry}</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey="risk" radius={4}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill="#EF4444" />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-55 sm:h-65 md:h-75">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      angle={xAxisAngle}
+                      textAnchor={xAxisAnchor}
+                      height={xAxisHeight}
+                      tick={{ fontSize: isSmallScreen ? 11 : 12 }}
+                    />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: isSmallScreen ? 11 : 12 }} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload[0]) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white border border-gray-300 rounded shadow-lg p-2 text-xs">
+                              <p className="font-semibold">{data.name}</p>
+                              <p>Risk Score: {data.risk}</p>
+                              <p>Industry: {data.industry}</p>
+                              {data.simulated && <p className="text-indigo-600">Simulated</p>}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="risk" radius={4}>
+                      {chartData.map((entry: ChartItem, index: number) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={getRiskColor(entry.tier)}
+                          fillOpacity={entry.simulated ? 0.55 : 1}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -127,7 +187,7 @@ export default function ComparePage() {
               )}
 
               {/* Company List */}
-              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              <div className="space-y-2 max-h-64 sm:max-h-80 overflow-y-auto">
                 {filteredCompanies.map((company) => (
                   <Button
                     key={company.id}
@@ -157,7 +217,7 @@ export default function ComparePage() {
           </Card>
 
           {/* Comparison Cards */}
-          <div className="lg:col-span-3">
+          <div className="md:col-span-3 lg:col-span-3">
             {companiesForComparison.length === 0 ? (
               <Card className="text-center">
                 <CardContent className="py-8">
@@ -174,6 +234,11 @@ export default function ComparePage() {
                 {companiesForComparison.map((company) => {
                   const companyRiskDelta = company.risk.score - portfolioAverage.avgRiskScore;
                   const isAboveAverage = companyRiskDelta > 0;
+                  const selectedColor = whatIfSelections[company.id];
+                  const whatIf = selectedColor
+                    ? calculateWhatIfRisk(company, selectedColor)
+                    : null;
+                  const simulatedTier = selectedColor ? summaries[selectedColor].tier : null;
 
                   return (
                     <Card key={company.id}>
@@ -213,7 +278,6 @@ export default function ComparePage() {
                           <RiskBadge
                             score={company.risk.score}
                             tier={company.risk.tier}
-                            confidence={company.risk.confidence}
                             size="md"
                           />
                         </div>
@@ -241,7 +305,7 @@ export default function ComparePage() {
                                 isAboveAverage ? "bg-red-50" : "bg-green-50"
                               }`}
                             >
-                              <span className="text-sm text-gray-700">Delta</span>
+                              <span className="text-sm text-gray-700">Difference from Avg</span>
                               <span
                                 className={`font-semibold ${
                                   isAboveAverage ? "text-red-600" : "text-green-600"
@@ -252,6 +316,67 @@ export default function ComparePage() {
                               </span>
                             </div>
                           </div>
+                        </div>
+
+                        {/* What-if: Change Logo Colour */}
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                          <div className="text-xs font-semibold text-gray-700 uppercase mb-2">
+                            Simulate Logo Colour Change
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <Select
+                              value={selectedColor ?? undefined}
+                              onValueChange={(value) =>
+                                setWhatIfSelections((prev) => ({ ...prev, [company.id]: value }))
+                              }
+                            >
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder="Choose a colour" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.keys(summaries).map((colorName) => (
+                                  <SelectItem key={colorName} value={colorName}>
+                                    {colorName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {selectedColor && (
+                              <Button
+                                variant="outline"
+                                onClick={() =>
+                                  setWhatIfSelections((prev) => ({ ...prev, [company.id]: null }))
+                                }
+                              >
+                                Reset
+                              </Button>
+                            )}
+                          </div>
+
+                          {whatIf && simulatedTier && (
+                            <div className="mt-3 space-y-2">
+                              <div className="text-xs text-gray-600">
+                                Proposed colour: <span className="font-medium">{whatIf.proposedColor.name}</span>
+                              </div>
+                              <RiskBadge score={whatIf.proposedRisk} tier={simulatedTier} size="sm" />
+                              <div
+                                className={`flex items-center justify-between px-2 py-1 rounded ${
+                                  whatIf.delta > 0 ? "bg-red-50" : "bg-green-50"
+                                }`}
+                              >
+                                <span className="text-sm text-gray-700">Change vs Current</span>
+                                <span
+                                  className={`font-semibold ${
+                                    whatIf.delta > 0 ? "text-red-600" : "text-green-600"
+                                  }`}
+                                >
+                                  {whatIf.delta > 0 ? "+" : ""}
+                                  {Math.abs(whatIf.delta)}
+                                </span>
+                              </div>
+                              <ConfidenceIndicator level={whatIf.confidence} />
+                            </div>
+                          )}
                         </div>
 
                         {/* Confidence */}

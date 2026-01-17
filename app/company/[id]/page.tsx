@@ -73,7 +73,6 @@ export default function CompanyDetailPage() {
                   <RiskBadge
                     score={company.risk.score}
                     tier={company.risk.tier}
-                    confidence={company.risk.confidence}
                     size="lg"
                   />
                 </div>
@@ -235,7 +234,7 @@ export default function CompanyDetailPage() {
                         </CardContent>
                       </Card>
 
-                      {/* Delta */}
+                      {/* Risk Change */}
                       <Card
                         className={`${
                           whatIfResult.delta > 0

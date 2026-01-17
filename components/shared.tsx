@@ -6,14 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 interface RiskBadgeProps {
   score: number;
   tier: RiskTier;
-  confidence?: Confidence;
   size?: "sm" | "md" | "lg";
 }
 
 export function RiskBadge({
   score,
   tier,
-  confidence = "Medium",
   size = "md",
 }: RiskBadgeProps) {
   const bgColor = getTierBgColor(tier);
@@ -26,7 +24,10 @@ export function RiskBadge({
   };
 
   return (
-    <Badge className={`${bgColor} ${textColor} ${sizeClasses[size]} font-bold border-0`}>
+    <Badge
+      variant="outline"
+      className={`${bgColor} ${textColor} ${sizeClasses[size]} font-bold border-0`}
+    >
       <div className="flex flex-col gap-0.5">
         <span>{tier}</span>
         <span className="text-xs font-medium opacity-90">{score} pts</span>

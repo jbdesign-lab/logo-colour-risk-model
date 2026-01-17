@@ -107,11 +107,11 @@ export function getRiskColor(tier: string): string {
     case "Low":
       return "#10B981"; // green
     case "Medium":
-      return "#F59E0B"; // amber
+      return "#FFE600"; // amber
     case "High":
-      return "#EF4444"; // red
+      return "#F5A733"; // red
     case "Severe":
-      return "#7C2D12"; // dark red
+      return "#F53333"; // dark red
     default:
       return "#6B7280"; // gray
   }

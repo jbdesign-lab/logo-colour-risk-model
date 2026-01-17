@@ -79,7 +79,7 @@ export default function OverviewPage() {
                 <CardTitle className="text-lg sm:text-xl">Ranked Colours by Risk</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <ul className="divide-y">
+                <ul className="divide-y divide-slate-200">
                   {sortedColors.map((color) => (
                     <li
                       key={color.colorName}
@@ -106,7 +106,6 @@ export default function OverviewPage() {
                         <RiskBadge
                           score={color.avgRiskScore}
                           tier={color.tier}
-                          confidence={color.confidence}
                           size="sm"
                         />
                       </div>
@@ -127,7 +126,7 @@ export default function OverviewPage() {
                     style={{ backgroundColor: selectedColorData.hex }}
                   />
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h3 className="text-lg font-bold text-gray-700">
                       {selectedColorData.colorName}
                     </h3>
                     <p className="text-xs text-gray-500">{selectedColorData.hex}</p>

@@ -10,6 +10,7 @@ import {
 } from "@/components/shared";
 import { useFilterStore } from "@/store";
 import { filterCompaniesByColorAndSearch, calculatePortfolioStats } from "@/lib/utils";
+import { RiskTier } from "@/lib/types";
 import {
   BarChart,
   Bar,
@@ -17,6 +18,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -54,6 +56,7 @@ export default function PortfolioPage() {
     useFilterStore();
   const [sortBy, setSortBy] = useState<"name" | "risk" | "color">("name");
   const [currentPage, setCurrentPage] = useState(1);
+  const [scenarioColor, setScenarioColor] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   const summaries = getColorRiskSummaries();
@@ -94,13 +97,56 @@ export default function PortfolioPage() {
   // Calculate portfolio stats
   const stats = calculatePortfolioStats(filteredCompanies);
 
+  // Scenario: simulate changing filtered companies to a selected colour
+  const scenarioStats = useMemo(() => {
+    if (!scenarioColor) return null;
+    const summary = summaries[scenarioColor];
+    const count = filteredCompanies.length;
+    const breakdown: { Low: number; Medium: number; High: number; Severe: number } = {
+      Low: 0,
+      Medium: 0,
+      High: 0,
+      Severe: 0,
+    };
+    const t = summary.tier as RiskTier;
+    breakdown[t] = count;
+    const percentages = {
+      Low: Math.round((breakdown.Low / Math.max(1, count)) * 100),
+      Medium: Math.round((breakdown.Medium / Math.max(1, count)) * 100),
+      High: Math.round((breakdown.High / Math.max(1, count)) * 100),
+      Severe: Math.round((breakdown.Severe / Math.max(1, count)) * 100),
+    };
+    return {
+      totalCompanies: count,
+      avgRiskScore: summary.avgRiskScore,
+      tierBreakdown: breakdown,
+      percentageByTier: {
+        Low: `${percentages.Low}%`,
+        Medium: `${percentages.Medium}%`,
+        High: `${percentages.High}%`,
+        Severe: `${percentages.Severe}%`,
+      },
+      totalExposure: stats.totalExposure,
+    };
+  }, [scenarioColor, summaries, filteredCompanies, stats.totalExposure]);
+
   // Prepare tier distribution data
   const tierDistributionData = [
     { name: "Low", value: stats.tierBreakdown.Low, fill: "#10B981" },
-    { name: "Medium", value: stats.tierBreakdown.Medium, fill: "#F59E0B" },
-    { name: "High", value: stats.tierBreakdown.High, fill: "#EF4444" },
-    { name: "Severe", value: stats.tierBreakdown.Severe, fill: "#7C2D12" },
+    { name: "Medium", value: stats.tierBreakdown.Medium, fill: "#ffe600" },
+    { name: "High", value: stats.tierBreakdown.High, fill: "#f5a733" },
+    { name: "Severe", value: stats.tierBreakdown.Severe, fill: "#f53333" },
   ];
+
+  // Scenario vs. Current comparison data
+  const comparisonData = scenarioStats
+    ? [
+        { tier: "Low", Current: stats.tierBreakdown.Low, Scenario: scenarioStats.tierBreakdown.Low },
+        { tier: "Medium", Current: stats.tierBreakdown.Medium, Scenario: scenarioStats.tierBreakdown.Medium },
+        { tier: "High", Current: stats.tierBreakdown.High, Scenario: scenarioStats.tierBreakdown.High },
+        { tier: "Severe", Current: stats.tierBreakdown.Severe, Scenario: scenarioStats.tierBreakdown.Severe },
+      ]
+    : [];
 
   return (
     <>
@@ -137,6 +183,75 @@ export default function PortfolioPage() {
             subtext="aggregate"
           />
         </div>
+
+        {/* Scenario Analysis */}
+        {scenarioStats && (
+          <Card className="mb-6 sm:mb-8">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg sm:text-xl">Scenario Analysis: {scenarioColor}</CardTitle>
+                  <div className="text-xs text-gray-600 mt-1">Simulated impact if filtered companies changed to {scenarioColor}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setScenarioColor(null)}>Reset</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Comparison KPIs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <div className="text-xs font-semibold text-gray-700 uppercase mb-3">Current Portfolio</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <StatCard label="Avg Risk" value={stats.avgRiskScore} subtext="out of 100" />
+                    <StatCard
+                      label="High/Severe"
+                      value={stats.tierBreakdown.High + stats.tierBreakdown.Severe}
+                      subtext={`${Math.round(((stats.tierBreakdown.High + stats.tierBreakdown.Severe) / Math.max(1, stats.totalCompanies)) * 100)}%`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-gray-700 uppercase mb-3">Scenario: {scenarioColor}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <StatCard label="Avg Risk" value={scenarioStats.avgRiskScore} subtext="out of 100" />
+                    <StatCard
+                      label="High/Severe"
+                      value={scenarioStats.tierBreakdown.High + scenarioStats.tierBreakdown.Severe}
+                      subtext={`${Math.round(((scenarioStats.tierBreakdown.High + scenarioStats.tierBreakdown.Severe) / Math.max(1, scenarioStats.totalCompanies)) * 100)}%`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Comparison Chart */}
+              <div>
+                <div className="text-xs font-semibold text-gray-700 uppercase mb-3">Risk Tier Comparison</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={comparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="tier" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: "12px" }} />
+                    <Bar dataKey="Current" fill="#3B82F6" radius={4} />
+                    <Bar dataKey="Scenario" fill="#8B5CF6" radius={4} fillOpacity={0.7} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Delta Summary */}
+              <div className="flex items-center justify-between px-4 py-3 rounded bg-indigo-50 border border-indigo-200">
+                <div className="text-sm font-medium text-gray-700">Average Risk Change</div>
+                <div className={`text-lg font-bold ${
+                  scenarioStats.avgRiskScore > stats.avgRiskScore ? "text-red-600" : "text-green-600"
+                }`}>
+                  {scenarioStats.avgRiskScore > stats.avgRiskScore ? "+" : ""}
+                  {scenarioStats.avgRiskScore - stats.avgRiskScore} points
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-6 sm:mb-8">
           {/* Risk Distribution Chart */}
@@ -240,6 +355,31 @@ export default function PortfolioPage() {
                   Clear Filters
                 </Button>
               )}
+
+              {/* Scenario Mode */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 uppercase mb-3 block">
+                  Scenario Mode (simulate colour)
+                </label>
+                <div className="flex items-center gap-2">
+                  <Select value={scenarioColor ?? undefined} onValueChange={(val) => setScenarioColor(val)}>
+                    <SelectTrigger className="w-full text-xs sm:text-sm">
+                      <SelectValue placeholder="Choose a colour to simulate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {colorList.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {scenarioColor && (
+                    <Button variant="outline" className="text-xs" onClick={() => setScenarioColor(null)}>Reset</Button>
+                  )}
+                </div>
+                {scenarioColor && (
+                  <div className="mt-2 text-xs text-gray-600">Active scenario: {scenarioColor}</div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -251,7 +391,7 @@ export default function PortfolioPage() {
                 <div className="text-xs flex items-center gap-2">
                   <label className="text-gray-600">Sort:</label>
                   <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
-                    <SelectTrigger className="w-[120px] sm:w-[140px] text-xs">
+                    <SelectTrigger className="w-30 sm:w-35 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -297,7 +437,6 @@ export default function PortfolioPage() {
                             <RiskBadge
                               score={company.risk.score}
                               tier={company.risk.tier}
-                              confidence={company.risk.confidence}
                               size="sm"
                             />
                           </TableCell>

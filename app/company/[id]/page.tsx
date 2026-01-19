@@ -87,7 +87,7 @@ export default function CompanyDetailPage() {
                   {company.exposure && (
                     <StatCard
                       label="Exposure"
-                      value={`$${(company.exposure / 1000000).toFixed(2)}M`}
+                      value={`£${(company.exposure / 1000000).toFixed(2)}M`}
                     />
                   )}
 
